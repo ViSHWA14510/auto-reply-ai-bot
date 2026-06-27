@@ -5,7 +5,7 @@ from telegram.ext import ContextTypes
 from telegram.error import TelegramError
 
 from config import CHANNELS, LINK_EXPIRY_SECONDS
-from utils import to_small_caps
+from utils import to_small_caps, bold
 
 
 async def _generate_links(context: ContextTypes.DEFAULT_TYPE, user_id: int):
@@ -23,6 +23,7 @@ async def _generate_links(context: ContextTypes.DEFAULT_TYPE, user_id: int):
                 expire_date=expire_unix,
                 member_limit=1,  # one-time use — just for this user
             )
+            # Buttons can't render bold/HTML formatting, so this stays small-caps only.
             buttons.append([InlineKeyboardButton(to_small_caps(label), url=invite.invite_link)])
 
             # Telegram already auto-expires the link via expire_date. This job is a
@@ -53,11 +54,11 @@ async def _revoke_link_job(context: ContextTypes.DEFAULT_TYPE):
 
 
 def _links_text():
-    return to_small_caps(
+    return bold(to_small_caps(
         "here are our official channel links 👇\n\n"
         "for your security, each link is personal and works only once.\n"
         "it will expire automatically in 1 hour, so please join now!"
-    )
+    ))
 
 
 async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -66,11 +67,14 @@ async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not buttons:
         await update.effective_message.reply_text(
-            to_small_caps("sorry, links are unavailable right now. please try again later.")
+            bold(to_small_caps("sorry, links are unavailable right now. please try again later.")),
+            parse_mode="HTML",
         )
         return
 
-    await update.effective_message.reply_text(_links_text(), reply_markup=InlineKeyboardMarkup(buttons))
+    await update.effective_message.reply_text(
+        _links_text(), parse_mode="HTML", reply_markup=InlineKeyboardMarkup(buttons)
+    )
 
 
 async def link_button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -81,7 +85,11 @@ async def link_button_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     buttons = await _generate_links(context, user_id)
 
     if not buttons:
-        await query.message.reply_text(to_small_caps("sorry, links are unavailable right now."))
+        await query.message.reply_text(
+            bold(to_small_caps("sorry, links are unavailable right now.")), parse_mode="HTML"
+        )
         return
 
-    await query.message.reply_text(_links_text(), reply_markup=InlineKeyboardMarkup(buttons))
+    await query.message.reply_text(
+        _links_text(), parse_mode="HTML", reply_markup=InlineKeyboardMarkup(buttons)
+    )
