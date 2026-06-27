@@ -19,6 +19,7 @@ from typing import Optional
 from config import (
     AI_PROVIDER,
     AI_SYSTEM_PROMPT,
+    AI_KNOWLEDGE_BASE,
     AI_MAX_HISTORY_TURNS,
     ANTHROPIC_API_KEY,
     AI_MODEL,
@@ -28,6 +29,18 @@ from config import (
 )
 
 _history: dict[int, list[dict]] = {}
+
+
+def _build_system_prompt() -> str:
+    """Combines the AI's tone/behavior instructions (AI_SYSTEM_PROMPT) with
+    the specific facts you want it to know (AI_KNOWLEDGE_BASE), if any."""
+    if AI_KNOWLEDGE_BASE.strip():
+        return (
+            f"{AI_SYSTEM_PROMPT}\n\n"
+            f"Here is specific information about our community — use it when "
+            f"relevant, and don't contradict it:\n{AI_KNOWLEDGE_BASE.strip()}"
+        )
+    return AI_SYSTEM_PROMPT
 
 
 def _trim_history(user_id: int):
@@ -43,7 +56,7 @@ def _call_anthropic(history: list[dict]) -> str:
     response = client.messages.create(
         model=AI_MODEL,
         max_tokens=400,
-        system=AI_SYSTEM_PROMPT,
+        system=_build_system_prompt(),
         messages=history,
     )
     return "".join(block.text for block in response.content if block.type == "text").strip()
@@ -56,7 +69,7 @@ def _call_openai_compatible(history: list[dict]) -> str:
     response = client.chat.completions.create(
         model=OPENAI_MODEL,
         max_tokens=400,
-        messages=[{"role": "system", "content": AI_SYSTEM_PROMPT}] + history,
+        messages=[{"role": "system", "content": _build_system_prompt()}] + history,
     )
     return (response.choices[0].message.content or "").strip()
 
