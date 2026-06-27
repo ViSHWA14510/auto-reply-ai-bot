@@ -31,6 +31,8 @@ A ready-to-deploy Telegram bot that:
 | `/link` | Generates a fresh, **personal, single-use** invite link for every channel/group in your config, shown as tappable buttons. Each link expires after 1 hour (configurable) or after first use, whichever comes first. |
 | *(any plain text)* | Not a command — just a regular message. It's forwarded to the admin(s), **or** answered instantly by the AI assistant if you're marked `/offline`. The user always gets a reply either way. |
 
+> There's no `/reply` command — to answer a specific user, reply (in Telegram) to their forwarded notification message. See [How it behaves](#how-it-behaves).
+
 ### Admin-only commands
 *(Restricted to the Telegram user IDs listed in `ADMIN_IDS`. Silently ignored for everyone else.)*
 
@@ -51,6 +53,7 @@ A ready-to-deploy Telegram bot that:
   - If you're online (default) → the message is forwarded to all `ADMIN_IDS`, and the user gets a polite "we'll get back to you" reply.
   - If you're `/offline` and the AI assistant is enabled → the user gets an instant AI-generated reply, *and* you're still notified of the question and the AI's answer (tagged 🤖) so you stay in the loop.
   - If the AI call fails for any reason (bad key, rate limit, no internet) → it automatically falls back to forwarding to you. The user is never left without a response.
+- **Replying to a user:** Telegram won't let you message a random user ID directly, so the bot relays it for you — just hit **Reply** on any forwarded notification (or AI auto-reply notification) and type your answer. It's sent straight to that user, and you get a "✅ Sent to user" confirmation. Works for photos, documents, etc. too, not just text. This works even after the AI has already answered — handy for following up personally. (Internally, the bot remembers which notification message maps to which user; this mapping is pruned automatically after 30 days.)
 - **You reply to a message with `/broadcast`** → that exact message (text, photo, video, etc. — anything `copy_message` supports) is sent to every stored user, with a live progress message that updates as it sends.
 
 ---
@@ -176,7 +179,8 @@ Railway deploys automatically on every push to your connected branch. Check the 
 | `OPENAI_API_KEY` | Only if using openai_compatible | — | Groq / OpenAI / Gemini key, depending on `OPENAI_BASE_URL` |
 | `OPENAI_BASE_URL` | No | Groq's endpoint | Swap for OpenAI's or Gemini's endpoint — see `.env.example` |
 | `OPENAI_MODEL` | No | `llama-3.3-70b-versatile` | Model name for whichever `OPENAI_BASE_URL` you're using |
-| `AI_SYSTEM_PROMPT` | No | generic support-assistant prompt | Edit to match your community's tone/rules |
+| `AI_SYSTEM_PROMPT` | No | generic support-assistant prompt | The AI's tone/instructions — edit to match your community's style |
+| `AI_KNOWLEDGE_BASE` | No | empty | Particular facts/messages the AI should know and use (pricing, hours, rules, links, promos). Kept separate from `AI_SYSTEM_PROMPT` so you can update facts without touching tone/instructions |
 | `AI_MAX_HISTORY_TURNS` | No | `6` | How many past exchanges per user the AI remembers (in-memory, resets on restart) |
 
 ---
@@ -199,6 +203,24 @@ Railway deploys automatically on every push to your connected branch. Check the 
 
 **To switch to ChatGPT or Gemini instead of Groq:** keep `AI_PROVIDER=openai_compatible`, just overwrite `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL` with the preset shown in `.env.example` — no code changes needed, since Groq, Gemini, and OpenAI all speak the same API format.
 
+### Managing what the AI says
+
+Two separate variables control this, on purpose:
+
+- **`AI_SYSTEM_PROMPT`** — the AI's *tone and behavior*: how friendly/formal it is, what it should never do, when to defer to a human. Change this rarely.
+- **`AI_KNOWLEDGE_BASE`** — *specific facts* you want it to know and use: pricing, hours, rules, refund policy, links, promos. Put each fact on its own line. Update this often, as your facts change, without touching `AI_SYSTEM_PROMPT` at all.
+
+Example `AI_KNOWLEDGE_BASE`:
+```
+Subscription price: $10/month, 7-day free trial.
+Support hours: 9am-6pm IST, Mon-Sat.
+Refunds: full refund within 48 hours of purchase, no questions asked.
+Our main channel link: https://t.me/yourchannel
+```
+The AI is told to use this information when relevant and not contradict it — but it will still say "I'm not sure" for anything not covered here, rather than guessing.
+
+You don't need to redeploy code to change either variable — on Railway, edit the Variable and the bot picks it up on its next restart (Railway restarts the service automatically after a variable change).
+
 **Behavior notes:**
 - `/offline` → users get instant AI replies; you're still notified of every question and answer.
 - `/online` → back to forward-only, no AI.
@@ -206,6 +228,11 @@ Railway deploys automatically on every push to your connected branch. Check the 
 - AI call failure of any kind → automatic fallback to forwarding the message to you.
 - Conversation memory is per-user, in-memory, and resets on restart (fine for short support chats).
 - Every message that reaches you shows the sender's name, username, and a tap-to-copy Telegram ID.
+- The AI's own replies are sent as plain text, not bolded/small-caps — only the bot's static messages (welcome, links, acknowledgement) use that styling. See below.
+
+### Message styling
+
+The bot's static user-facing text (welcome message, channel-links message, "thanks for reaching out" acknowledgement) is styled **bold + small caps** together, via `utils.bold()` wrapping `utils.to_small_caps()`. Button labels stay small-caps only (Telegram buttons can't render bold/HTML). To change this, edit the relevant handler in `handlers/` — e.g. drop `bold(...)` to go back to small-caps only, or drop `to_small_caps(...)` to go fully plain-bold.
 
 ---
 
