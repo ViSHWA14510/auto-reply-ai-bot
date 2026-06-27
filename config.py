@@ -115,8 +115,8 @@ OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "llama-3.3-70b-versatile")
 #     OPENAI_MODEL    = "gemini-2.5-flash"
 #     OPENAI_API_KEY  = your Gemini key, from aistudio.google.com
 
-# Edit this to match your channel/brand — these are the AI's instructions.
-# Shared by both providers.
+# Edit this to match your channel/brand — these are the AI's instructions
+# (tone, what it should/shouldn't do). Shared by both providers.
 AI_SYSTEM_PROMPT = os.environ.get(
     "AI_SYSTEM_PROMPT",
     "You are a friendly, professional support assistant for our Telegram channel. "
@@ -125,6 +125,19 @@ AI_SYSTEM_PROMPT = os.environ.get(
     "schedules, etc.), say you're not sure and that a human admin will follow up "
     "soon — never make up specifics you don't actually know.",
 )
+
+# Particular facts/messages you want the AI to know and use when relevant —
+# pricing, hours, rules, links, promo text, anything specific to your
+# community. Kept separate from AI_SYSTEM_PROMPT on purpose: that variable is
+# the AI's *tone and behavior*, this one is *what it knows*. Update this
+# whenever your facts change, without touching the instructions above.
+#
+# Put each fact on its own line. Example:
+#   AI_KNOWLEDGE_BASE="Subscription price: $10/month, 7-day free trial.
+#   Support hours: 9am-6pm IST, Mon-Sat.
+#   Refunds: full refund within 48 hours of purchase, no questions asked.
+#   Our main channel link: https://t.me/yourchannel"
+AI_KNOWLEDGE_BASE = os.environ.get("AI_KNOWLEDGE_BASE", "")
 
 # How many previous user/assistant exchanges to remember per user, for more
 # coherent multi-turn conversations. Higher = more context, more tokens used.
